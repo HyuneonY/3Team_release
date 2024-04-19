@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>사전캠프_과제_김동헌</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Hi+Melody&family=Nanum+Pen+Script&display=swap');
+
+    * {
+      font-family: "IBM Plex Sans KR", sans-serif;
+      font-weight: 300;
+      line-height: 1.2;
+    }
+
+    .mytitle {
+      margin: 30px 30px 30px 30px;
+      width: 80%;
+      height: 200px;
+      border-radius: 20px;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-image: url('img/guestbookpic.jpg');
+      background-position: center;
+      background-size: cover;
+    }
+
+    .addList {
+      width: 80%;
+      margin: 30px 30px 30px 30px;
+      padding: 20px;
+      box-shadow: 0px 0px 3px 0px;
+      border-radius: 5px;
+    }
+
+    .mycards {
+      width: 80%;
+      margin: 30px 30px 30px 30px;
+    }
+
+    .mybtn {
+      margin: 30px 0px 0px 0px;
+      text-align: right;
+    }
+
+    .card {
+      margin: auto 20px auto 20px;
+    }
+
+    .deletebtn {
+      width: 60px;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .endBtn {
+      margin: 0px 0px 30px 40%;
+    }
+
+    h1 {
+      font-size: 72px;
+    }
+  </style>
+  <script type="module">
+    // Firebase SDK 라이브러리 가져오기
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+    import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+    import {
+      collection,
+      addDoc,
+      setDoc,
+      getDoc,
+    } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+    import {
+      getDocs,
+      deleteDoc,
+      doc,
+      getCountFromServer,
+      updateDoc,
+      arrayUnion,
+      arrayRemove,
+    } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: 'AIzaSyC7eXGadJZHv4SNDDOPYAvExHjYXvqBXgo',
+      authDomain: 'sparta-ab496.firebaseapp.com',
+      projectId: 'sparta-ab496',
+      storageBucket: 'sparta-ab496.appspot.com',
+      messagingSenderId: '350561270714',
+      appId: '1:350561270714:web:fc9ab5f3e1d56dd15abb83',
+      measurementId: 'G-VKLXQQRJWE',
+    };
+
+    // Firebase 인스턴스 초기화
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const coll = collection(db, 'to_do');
+    const snapshot = await getCountFromServer(coll);
+    let card_count = snapshot.data().count;
+    if (card_count == 0) {
+      await setDoc(doc(db, 'to_do_card', 'last_card'), { last: 0 });
+    }
+
+
+
+
+    // 카드 등록
+    $('#postingbtn').click(async function () {
+      let doingList = [];
+      let nullTest = 3;
+      for (let i = 0; i <= 2; i++) {
+        if ($('#' + i).val() == "") {
+          nullTest = i;
+          break;
+        }
+        doingList.push($('#' + i).val());
+      }
+      if (nullTest == 3) {
+        let today = new Date();
+        doingList.push(today.toLocaleString());
+        let docIn = {
+          doingList,
+        };
+
+        let last_card = await getDoc(doc(db, 'to_do_card', 'last_card'));
+        let last_number = last_card.data();
+        last_number['last']++;
+
+        await setDoc(doc(db, 'to_do', 'card' + last_number['last']), docIn);
+
+        let card_In = 'card' + last_number['last'];
+        const washingtonRef = doc(db, 'to_do_card', 'card_available');
+        await updateDoc(washingtonRef, {
+          cards: arrayUnion(card_In),
+        });
+        await setDoc(doc(db, 'to_do_card', 'last_card'), {
+          last: last_number['last'],
+        });
+
+        alert('저장이 완료되었습니다.');
+        window.location.reload();
+      }
+      else {
+        if (nullTest == 0) alert("이름을 입력해주세요!");
+        else if (nullTest == 2) alert("비밀번호를 입력해주세요!");
+        else if (nullTest == 1) alert("내용을 입력해주세요!");
+      }
+    });
+
+    //등록되어 있는 카드 띄우기
+    let testDoc = await getDoc(doc(db, 'to_do_card', 'card_available'));
+    let tete = testDoc.data();
+    for (let i = 0; tete['cards'][i]; i++) {
+      let find = tete['cards'][i];
+      let row = await getDoc(doc(db, 'to_do', find));
+      row = row.data();
+      let name = row['doingList'][0];
+      let temp_html = `
+            <div class=${find}>
+              <div class="card h-100">
+                <div class="card-footer">
+                  <small class="text-body-secondary">${name}</small>
+                    <div class="time">
+                        <small">${row['doingList'][3]}</small>
+                    </div>
+                  <small class="dbtn">
+                    <button class="editbtn" id=${find} type="button" class="btn btn-secondary">수정</button>
+                    <button class="deletebtn" id=${find} type="button" class="btn btn-secondary">X</button>
+                    </small>
+              </div>
+                  <div class="card-body">`;
+      temp_html += `<h5>${row['doingList'][1] + '\n'}</h5>
+                    </div>  
+                </div>
+            </div>`;
+      $('#card').append(temp_html);
+    }
+
+    // 카드 삭제
+    $('.deletebtn').click(async function (e) {
+      var pwIn = prompt('비밀번호를 입력하세요', '');
+      let pw = await getDoc(doc(db, 'to_do', e.target.id));
+      pw = pw.data();
+      if (pwIn == pw['doingList'][2]) {
+        alert("삭제되었습니다.");
+        $('.' + e.target.id).remove();
+        await deleteDoc(doc(db, 'to_do', e.target.id));
+        const washingtonRef = doc(db, 'to_do_card', 'card_available');
+        await updateDoc(washingtonRef, {
+          cards: arrayRemove(e.target.id),
+        });
+
+        const coll = collection(db, 'to_do');
+        const snapshot = await getCountFromServer(coll);
+        let card_count = snapshot.data().count;
+        if (card_count == 0) {
+          await setDoc(doc(db, 'to_do_card', 'last_card'), { last: 0 });
+        }
+      }
+      else {
+        alert("비밀번호가 일치하지 않습니다.");
+      }
+    });
+
+    //카드 수정
+    $('.editbtn').click(async function (e) {
+      let pwIn;
+      let pw = await getDoc(doc(db, 'to_do', e.target.id));
+      pw = pw.data();
+      while (1) {
+        pwIn = prompt('비밀번호를 입력하세요', '');
+        if (pwIn == pw['doingList'][2]) {
+          let editContent;
+          while(1){
+            editContent = prompt('수정하실 내용을 입력하세요');
+            if(editContent!="")break;
+            alert('내용을 입력해주세요!');
+          }
+          let row = await getDoc(doc(db, 'to_do', e.target.id));
+          row = row.data();
+          row['doingList'][1]=editContent;
+          await setDoc(doc(db, "to_do", e.target.id), row);
+          alert('수정이 완료되었습니다');
+          window.location.reload();
+          break;
+        }
+        else {
+          alert("비밀번호가 일치하지 않습니다.");
+        }
+      }
+    });
+  </script>
+</head>
+
+<body>
+  <div class="mytitle">
+    <h1>방명록 작성</h1>
+  </div>
+  <div class="addList" id="addList">
+    <div id="input">
+      <div class="name">
+        <div class="form-floating mb-3">
+          <input type="email" class="form-control" id="0" placeholder="이름" />
+          <label for="floatingInput">이름</label>
+        </div>
+      </div>
+      <div class="password">
+        <div class="form-floating mb-3">
+          <input type="password" class="form-control" id="2" placeholder="비밀번호" />
+          <label for="floatingInput">비밀번호</label>
+        </div>
+      </div>
+      <div class="contents">
+        <div id="10" class="form-floating mb-3">
+          <input type="email" class="form-control" id="1" placeholder="내용" />
+          <label for="floatingInput">내용</label>
+        </div>
+      </div>
+    </div>
+    <div class="mybtn">
+      <button id="postingbtn" type="button" class="btn btn-secondary">
+        기록하기
+      </button>
+    </div>
+  </div>
+  <div class="mycards">
+    <div id="card" class="row row-cols-1 row-cols-md-1 g-4"></div>
+  </div>
+  </div>
+  <div class="endBtn">
+    <button class="btn btn-secondary" type="button" onclick="location.href='main.html' ">닫기</button>
+  </div>
+  </div>
+</body>
+
+</html>
